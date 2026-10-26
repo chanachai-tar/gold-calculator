@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gold Trading & Break-even Planner</title>
+    <title>Gold Trading & DCA Planner</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;600;700&display=swap" rel="stylesheet">
@@ -14,7 +14,7 @@
     <!-- Header -->
     <div class="bg-amber-500 text-white p-4 shadow-md text-center sticky top-0 z-50">
         <h1 class="text-xl font-bold">🥇 Gold Portfolio & DCA Planner</h1>
-        <p class="text-xs opacity-90">วางแผนซื้อเฉลี่ย & คำนวณราคาขายเพื่อหลุดดอย + กำไร</p>
+        <p class="text-xs opacity-90">ระบบจัดการพอร์ตทองคำ (เพิ่ม / แก้ไข / ลบ รายการ)</p>
     </div>
 
     <div class="max-w-md mx-auto p-4 space-y-4">
@@ -40,10 +40,36 @@
             </div>
         </div>
 
-        <!-- 2. กลยุทธ์แบ่งซื้อ 3 ไม้ (งบ 28,000 บาท) -->
+        <!-- 2. ฟอร์มเพิ่ม / แก้ไข รายการไม้ซื้อ -->
+        <div class="bg-white rounded-xl shadow p-4 border-t-4 border-blue-500 space-y-3" id="trade-form">
+            <div class="flex justify-between items-center">
+                <h2 class="text-sm font-semibold text-blue-600" x-text="editIndex === null ? '➕ บันทึกไม้ซื้อจริงเข้าพอร์ต' : '✏️ แก้ไขรายการไม้ที่ ' + (editIndex + 1)"></h2>
+                <button x-show="editIndex !== null" @click="cancelEdit()" class="text-xs text-gray-500 underline">ยกเลิกการแก้ไข</button>
+            </div>
+
+            <div class="space-y-2 text-sm">
+                <div>
+                    <label class="block text-xs text-gray-600 mb-1">ราคาทองที่ซื้อ (บาท/บาททอง):</label>
+                    <input type="number" x-model.number="inputPrice" placeholder="เช่น 64200" class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-blue-400 outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-600 mb-1">จำนวนเงินที่ใช้ซื้อ (บาท):</label>
+                    <input type="number" x-model.number="inputAmount" placeholder="เช่น 10000" class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-blue-400 outline-none">
+                </div>
+                
+                <button x-show="editIndex === null" @click="saveTrade()" class="w-full bg-blue-600 text-white font-semibold py-2 rounded-lg text-sm shadow hover:bg-blue-700 transition">
+                    + บันทึกไม้นี้เข้าพอร์ตจริง
+                </button>
+                <button x-show="editIndex !== null" @click="saveTrade()" class="w-full bg-amber-600 text-white font-semibold py-2 rounded-lg text-sm shadow hover:bg-amber-700 transition">
+                    💾 บันทึกการแก้ไข
+                </button>
+            </div>
+        </div>
+
+        <!-- 3. กลยุทธ์จำลองแบ่งซื้อ 3 ไม้ (งบ 28,000 บาท) -->
         <div class="bg-white rounded-xl shadow p-4 border-t-4 border-purple-500 space-y-3">
             <h2 class="text-sm font-semibold text-purple-700 flex justify-between items-center">
-                <span>🎯 กลยุทธ์แบ่งซื้อ 3 ไม้ (งบ 28,000 ฿)</span>
+                <span>🎯 กลยุทธ์จำลองแบ่งซื้อ 3 ไม้ (งบ 28,000 ฿)</span>
                 <span class="text-xs bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full font-normal">แผนถัวเฉลี่ย</span>
             </h2>
             
@@ -101,44 +127,28 @@
             </div>
         </div>
 
-        <!-- 3. จำลองซื้อทีละไม้ / บันทึกไม้ซื้อใหม่ -->
-        <div class="bg-white rounded-xl shadow p-4 border-t-4 border-blue-500 space-y-3">
-            <h2 class="text-sm font-semibold text-blue-600">➕ บันทึกไม้ซื้อจริงเข้าพอร์ต</h2>
-
-            <div class="space-y-2 text-sm">
-                <div>
-                    <label class="block text-xs text-gray-600 mb-1">ราคาทองที่ซื้อ (บาท/บาททอง):</label>
-                    <input type="number" x-model.number="inputPrice" class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-blue-400 outline-none">
-                </div>
-                <div>
-                    <label class="block text-xs text-gray-600 mb-1">จำนวนเงินที่ใช้ซื้อ (บาท):</label>
-                    <input type="number" x-model.number="inputAmount" class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-blue-400 outline-none">
-                </div>
-                <button @click="addNewTrade()" class="w-full bg-blue-600 text-white font-semibold py-2 rounded-lg text-sm shadow hover:bg-blue-700 transition">
-                    + บันทึกไม้นี้เข้าพอร์ตจริง
-                </button>
-            </div>
-        </div>
-
-        <!-- 4. บันทึกประวัติการซื้อทั้งหมด -->
+        <!-- 4. บันทึกประวัติการซื้อทั้งหมด (พร้อมปุ่ม แก้ไข / ลบ) -->
         <div class="bg-white rounded-xl shadow p-4 space-y-2">
-            <div class="flex justify-between items-center">
+            <div class="flex justify-between items-center mb-1">
                 <h2 class="text-sm font-semibold text-gray-700">📜 ประวัติการซื้อทั้งหมด (<span x-text="history.length"></span> ไม้)</h2>
                 <button @click="resetData()" class="text-xs text-red-500 underline">รีเซ็ตค่าเริ่มต้น</button>
             </div>
-            <div class="space-y-2 max-h-48 overflow-y-auto pr-1 text-xs">
+            <div class="space-y-2 max-h-60 overflow-y-auto pr-1 text-xs">
                 <template x-for="(item, index) in history" :key="index">
-                    <div class="flex justify-between items-center p-2 bg-gray-50 rounded-lg">
+                    <div class="flex justify-between items-center p-2.5 rounded-lg border transition" :class="editIndex === index ? 'bg-amber-50 border-amber-300' : 'bg-gray-50 border-gray-200'">
                         <div>
-                            <span class="font-bold text-gray-700" x-text="'ไม้ที่ ' + (index + 1)"></span>
-                            <span class="text-gray-400 text-[10px] block" x-text="'ราคา @ ' + formatNumber(item.price)"></span>
+                            <span class="font-bold text-gray-800 text-xs" x-text="'ไม้ที่ ' + (index + 1)"></span>
+                            <span class="text-gray-500 text-[11px] block" x-text="'ราคา @ ' + formatNumber(item.price) + ' ฿'"></span>
                         </div>
                         <div class="text-right flex items-center space-x-2">
                             <div>
-                                <span class="font-semibold text-gray-800" x-text="formatNumber(item.amount) + ' ฿'"></span>
+                                <span class="font-bold text-gray-800 text-xs" x-text="formatNumber(item.amount) + ' ฿'"></span>
                                 <span class="text-gray-500 text-[10px] block" x-text="(item.amount / item.price).toFixed(4) + ' บาท'"></span>
                             </div>
-                            <button @click="deleteTrade(index)" class="text-red-400 font-bold px-1 hover:text-red-600">×</button>
+                            <div class="flex items-center space-x-1 pl-2 border-l border-gray-300">
+                                <button @click="editTrade(index)" class="bg-amber-100 text-amber-800 px-2 py-1 rounded hover:bg-amber-200 text-[11px] font-medium">✏️ แก้ไข</button>
+                                <button @click="deleteTrade(index)" class="bg-red-100 text-red-700 px-2 py-1 rounded hover:bg-red-200 text-[11px] font-medium">🗑️ ลบ</button>
+                            </div>
                         </div>
                     </div>
                 </template>
@@ -162,6 +172,7 @@
                 ],
                 inputPrice: 64200,
                 inputAmount: 10000,
+                editIndex: null,
                 
                 // ราคากลยุทธ์ 3 ไม้
                 t1Price: 64200,
@@ -178,15 +189,41 @@
                     let g = this.totalGold();
                     return g > 0 ? this.totalInvestment() / g : 0;
                 },
-                addNewTrade() {
+                saveTrade() {
                     if(this.inputPrice > 0 && this.inputAmount > 0) {
-                        this.history.push({ price: Number(this.inputPrice), amount: Number(this.inputAmount) });
+                        if(this.editIndex !== null) {
+                            // โหมดแก้ไขรายการ
+                            this.history[this.editIndex] = { price: Number(this.inputPrice), amount: Number(this.inputAmount) };
+                            this.editIndex = null;
+                            alert('แก้ไขรายการเรียบร้อย!');
+                        } else {
+                            // โหมดเพิ่มรายการใหม่
+                            this.history.push({ price: Number(this.inputPrice), amount: Number(this.inputAmount) });
+                            alert('บันทึกไม้ซื้อใหม่ลงพอร์ตเรียบร้อย!');
+                        }
                         this.saveData();
-                        alert('บันทึกไม้ซื้อใหม่ลงพอร์ตเรียบร้อย!');
+                        this.inputPrice = 64200;
+                        this.inputAmount = 10000;
+                    } else {
+                        alert('กรุณากรอกราคาทองและจำนวนเงินให้ถูกต้อง');
                     }
                 },
+                editTrade(index) {
+                    this.editIndex = index;
+                    this.inputPrice = this.history[index].price;
+                    this.inputAmount = this.history[index].amount;
+                    document.getElementById('trade-form').scrollIntoView({ behavior: 'smooth' });
+                },
+                cancelEdit() {
+                    this.editIndex = null;
+                    this.inputPrice = 64200;
+                    this.inputAmount = 10000;
+                },
                 deleteTrade(index) {
-                    if(confirm('ต้องการลบรายการนี้ใช่ไหม?')) {
+                    if(confirm('ต้องการลบไม้ที่ ' + (index + 1) + ' ออกจากพอร์ตใช่ไหม?')) {
+                        if(this.editIndex === index) {
+                            this.cancelEdit();
+                        }
                         this.history.splice(index, 1);
                         this.saveData();
                     }
