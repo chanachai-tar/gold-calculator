@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gold Trading & DCA Planner</title>
+    <title>Gold Trading & DCA Planner Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;600;700&display=swap" rel="stylesheet">
@@ -13,25 +13,44 @@
 
     <!-- Header -->
     <div class="bg-amber-500 text-white p-4 shadow-md text-center sticky top-0 z-50">
-        <h1 class="text-xl font-bold">🥇 Gold Portfolio & DCA Planner</h1>
-        <p class="text-xs opacity-90">ระบบจัดการพอร์ตทองคำ & จำลองแบ่งซื้อ 3 ไม้</p>
+        <h1 class="text-xl font-bold">🥇 Gold Portfolio & DCA Planner Pro</h1>
+        <p class="text-xs opacity-90">ระบบจัดการพอร์ตทองคำ, คำนวณกำไร/ขาดทุน & วางแผนเล่นรอบ</p>
     </div>
 
     <div class="max-w-md mx-auto p-4 space-y-4">
 
-        <!-- 1. สรุปภาพรวมพอร์ต & ราคาหลุดดอย -->
+        <!-- 0. อัปเดตราคาทองตลาดปัจจุบัน -->
+        <div class="bg-white rounded-xl shadow p-4 border-t-4 border-amber-500 space-y-2">
+            <label class="block text-xs font-semibold text-gray-700">📌 ราคาทองตลาดปัจจุบัน (ใช้อ้างอิงคำนวณกำไร/ขาดทุน):</label>
+            <input type="number" x-model.number="marketPrice" class="w-full border rounded-lg p-2 text-base font-bold text-amber-700 focus:ring-2 focus:ring-amber-400 outline-none">
+        </div>
+
+        <!-- 1. สรุปภาพรวมพอร์ต & สถานะกำไร/ขาดทุนจริง -->
         <div class="bg-white rounded-xl shadow p-4 border-l-4 border-amber-500 space-y-3">
             <h2 class="text-sm font-semibold text-gray-500">สรุปภาพรวมพอร์ตปัจจุบัน</h2>
             <div class="grid grid-cols-2 gap-2 text-center">
                 <div class="bg-amber-50 p-2 rounded-lg">
                     <span class="text-xs text-gray-500 block">เงินลงทุนรวม</span>
-                    <span class="text-base font-bold text-amber-700" x-text="formatNumber(totalInvestment()) + ' ฿'"></span>
+                    <span class="text-sm font-bold text-amber-700" x-text="formatNumber(totalInvestment()) + ' ฿'"></span>
                 </div>
                 <div class="bg-amber-50 p-2 rounded-lg">
                     <span class="text-xs text-gray-500 block">ทองคำสะสมรวม</span>
-                    <span class="text-base font-bold text-amber-700" x-text="totalGold().toFixed(4) + ' บาท'"></span>
+                    <span class="text-sm font-bold text-amber-700" x-text="totalGold().toFixed(4) + ' บาท'"></span>
                 </div>
             </div>
+
+            <!-- มูลค่าปัจจุบัน & กำไร/ขาดทุน -->
+            <div class="grid grid-cols-2 gap-2 text-center">
+                <div class="bg-gray-50 p-2 rounded-lg border">
+                    <span class="text-xs text-gray-500 block">มูลค่าพอร์ตปัจจุบัน</span>
+                    <span class="text-sm font-bold text-gray-800" x-text="formatNumber(totalGold() * marketPrice) + ' ฿'"></span>
+                </div>
+                <div class="p-2 rounded-lg border" :class="(totalGold() * marketPrice - totalInvestment()) >= 0 ? 'bg-green-50 border-green-200 text-green-700' : 'bg-red-50 border-red-200 text-red-600'">
+                    <span class="text-xs block" :class="(totalGold() * marketPrice - totalInvestment()) >= 0 ? 'text-green-600' : 'text-red-500'">กำไร/ขาดทุนจริง</span>
+                    <span class="text-sm font-bold" x-text="((totalGold() * marketPrice - totalInvestment()) >= 0 ? '+' : '') + formatNumber(totalGold() * marketPrice - totalInvestment()) + ' ฿'"></span>
+                </div>
+            </div>
+
             <!-- จุดเท่าทุน / ราคาหลุดดอย -->
             <div class="bg-red-50 p-3 rounded-xl text-center border border-red-200">
                 <span class="text-xs text-red-600 font-semibold block">🎯 ราคาขายเพื่อ "หลุดดอย" (ต้นทุนเฉลี่ย)</span>
@@ -146,11 +165,35 @@
             </div>
         </div>
 
-        <!-- 4. ประวัติการซื้อทั้งหมด (เพิ่ม / แก้ไข / ลบ) -->
+        <!-- 4. ตารางเป้าหมายราคาขายทำกำไร / เล่นรอบ (Take Profit) -->
+        <div class="bg-white rounded-xl shadow p-4 border-t-4 border-green-500 space-y-3">
+            <h2 class="text-sm font-semibold text-green-600">🎯 ตารางราคาขายทำกำไรเล่นรอบ (เทียบจากราคาตลาด)</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs">
+                    <thead>
+                        <tr class="bg-gray-100 text-gray-600 border-b">
+                            <th class="p-2">ราคาขายออก</th>
+                            <th class="p-2">+ราคาขึ้น</th>
+                            <th class="p-2 text-right">กำไรสุทธิรวมทั้งพอร์ต</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <template x-for="target in targets" :key="target">
+                            <tr class="border-b">
+                                <td class="p-2 font-semibold" x-text="formatNumber(marketPrice + target) + ' ฿'"></td>
+                                <td class="p-2 text-green-600" x-text="'+' + target"></td>
+                                <td class="p-2 text-right font-bold text-green-700" x-text="'+' + formatNumber(target * totalGold()) + ' ฿'"></td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 5. ประวัติการซื้อทั้งหมด (เพิ่ม / แก้ไข / ลบ) -->
         <div class="bg-white rounded-xl shadow p-4 space-y-2">
             <div class="flex justify-between items-center mb-1">
                 <h2 class="text-sm font-semibold text-gray-700">📜 ประวัติการซื้อทั้งหมด (<span x-text="history.length"></span> ไม้)</h2>
-                <button @click="resetData()" class="text-xs text-red-500 underline">รีเซ็ตค่าเริ่มต้น</button>
             </div>
             <div class="space-y-2 max-h-60 overflow-y-auto pr-1 text-xs">
                 <template x-for="(item, index) in history" :key="index">
@@ -191,9 +234,10 @@
                 ],
                 inputPrice: 64200,
                 inputAmount: 10000,
+                marketPrice: 64200,
+                targets: [300, 500, 1000, 1500, 2000],
                 editIndex: null,
                 
-                // ค่าตั้งต้นกลยุทธ์ 3 ไม้ (งบรวม 28,000)
                 s1Amount: 10000, s1Price: 64200,
                 s2Amount: 10000, s2Price: 62500,
                 s3Amount: 8000,  s3Price: 61000,
@@ -262,12 +306,6 @@
                 },
                 saveData() {
                     localStorage.setItem('gold_history', JSON.stringify(this.history));
-                },
-                resetData() {
-                    if(confirm('รีเซ็ตกลับเป็นค่าเริ่มต้น 8 ไม้เดิม?')) {
-                        localStorage.removeItem('gold_history');
-                        location.reload();
-                    }
                 },
                 formatNumber(num) {
                     return new Intl.NumberFormat('th-TH', { maximumFractionDigits: 1 }).format(num || 0);
